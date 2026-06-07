@@ -8,9 +8,9 @@ on:
         required: true
         default: 'https://github.com/LineageOS/android.git'
       ROM_BRANCH:
-        description: 'LineageOS Branch (e.g., lineage-20.0, lineage-23.2)'
+        description: 'LineageOS Branch (e.g., lineage-20.0, lineage-21.0)'
         required: true
-        default: 'lineage-23.2' # Adjust this to match your target Android version compatibility
+        default: 'lineage-20.0'
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -54,7 +54,7 @@ on:
       BUILD_TYPE:
         description: 'Build Type'
         required: true
-        default: 'userdebug'
+        default: 'eng'
         type: choice
         options:
         - userdebug
@@ -144,8 +144,9 @@ jobs:
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         
-        # LineageOS specific configuration call formats
-        lunch lineage_${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.BUILD_TYPE }}
+        # Modern AOSP configuration standard layout structure
+        # Syntax breakdown: lunch <product_makefile_name> <release_config> <build_variant>
+        lunch lineage_${{ github.event.inputs.DEVICE_NAME }} trunk_staging ${{ github.event.inputs.BUILD_TYPE }}
         
         # Standard LineageOS build invocation target command
         mka bacon -j$(nproc --all)
