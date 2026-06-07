@@ -129,6 +129,10 @@ jobs:
           git clone ${{ github.event.inputs.VENDOR_TREE }} -b ${{ github.event.inputs.VENDOR_TREE_BRANCH }} ./${{ github.event.inputs.VENDOR_PATH }}
         fi
         
+        # Pull required MediaTek IMS frameworks dynamically to prevent device.mk errors
+        echo "[INFO] Resolving MediaTek hardware compilation dependencies..."
+        git clone https://github.com/LineageOS/android_vendor_mediatek_ims.git -b lineage-20 ./vendor/mediatek/ims
+        
         cd ./${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
