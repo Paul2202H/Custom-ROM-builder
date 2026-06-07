@@ -1,0 +1,141 @@
+name: Custom ROM - Infinity X 3.10 Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ROM_MANIFEST:
+        description: 'ROM Manifest URL'
+        required: true
+        default: 'https://github.com/InfinityX-Project/manifest.git' # Replace with the actual InfinityX manifest URL if different
+      ROM_BRANCH:
+        description: 'ROM Manifest Branch (Infinity X 3.10)'
+        required: true
+        default: 'thirteen' # Infinity X 3.10 is typically based on Android 13. Adjust if it uses a different branch name.
+      DEVICE_TREE:
+        description: 'Device Tree URL'
+        required: true
+        default: 'https://github.com/Paul2202H/Device-Tree.git'
+      DEVICE_TREE_BRANCH:
+        description: 'Device Tree Branch'
+        required: true
+        default: 'main'
+      DEVICE_PATH:
+        description: 'Specify your Device Path'
+        required: true
+        default: 'device/infinix/X6820'
+      DEVICE_NAME:
+        description: 'Specify your Device Codename'
+        required: true
+        default: 'X6820'
+      BUILD_TYPE:
+        description: 'Build Type'
+        required: true
+        default: 'userdebug'
+        type: choice
+        options:
+        - userdebug
+        - eng
+        - user
+
+jobs:
+  build:
+    name: Build ROM by ${{ github.actor }}
+    runs-on: ubuntu-22.04 # Explicitly using 22.04 for better Android build compatibility
+    if: github.event.repository.owner.id == github.event.sender.id
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Clean-up Runner Workspace
+      uses: rokibhasansagar/slimhub_actions@main
+      # Full ROM builds require massive space. This action removes unused dotnet, android SDKs, etc.
+
+    - name: Maximize Swap Space
+      uses: pierotofy/set-swap-space@master
+      with:
+        swap-size-gb: 16 # Increased to 16GB to prevent Out-Of-Memory errors during ROM compilation
+        
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git git-lfs gnupg gperf lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 python3-pip aria2
+        
+    - name: Install Repo Tool
+      run: |
+        mkdir -p ~/bin
+        curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+        chmod a+x ~/bin/repo
+        sudo ln -sf ~/bin/repo /usr/bin/repo
+
+    - name: Initialize and Sync ROM Source
+      run: |
+        mkdir -p ${GITHUB_WORKSPACE}/rom
+        cd ${GITHUB_WORKSPACE}/rom
+        git config --global user.name "xoo2001"
+        git config --global user.email "ekora2001@gmail.com"
+        
+        # Initialize repo with depth=1 to save time and disk space on the GitHub runner
+        repo init --depth=1 -u ${{ github.event.inputs.ROM_MANIFEST }} -b ${{ github.event.inputs.ROM_BRANCH }}
+        
+        # Sync the source code
+        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+    - name: Clone Device Tree
+      run: |
+        cd ${GITHUB_WORKSPACE}/rom
+        git clone ${{ github.event.inputs.DEVICE_TREE }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
+        cd ${{ github.event.inputs.DEVICE_PATH }}
+        echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+    - name: Setup CCACHE
+      run: |
+        echo "USE_CCACHE=1" >> $GITHUB_ENV
+        echo "CCACHE_DIR=$HOME/.ccache" >> $GITHUB_ENV
+        mkdir -p $HOME/.ccache
+        # Optional: You can implement caching mechanisms here if you have a premium/large GitHub storage plan
+
+    - name: Building Custom ROM
+      run: |
+        cd ${GITHUB_WORKSPACE}/rom
+        
+        # Source the build environment setup script
+        source build/envsetup.sh
+        
+        # Allow missing dependencies if required by older/unoptimized trees
+        export ALLOW_MISSING_DEPENDENCIES=true
+        
+        # Select target device
+        lunch infinity_${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.BUILD_TYPE }}
+        
+        # Start compiling the full ROM zip (mka bacon is standard for most modern custom ROMs)
+        mka bacon -j$(nproc --all)
+
+    - name: Set Release Properties
+      run: |
+        echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
+        cd ${GITHUB_WORKSPACE}/rom
+        # Finding the target zip file dynamically
+        ROM_ZIP=$(find out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ -maxdepth 1 -name "InfinityX*.zip" ! -name "*target_files*" | head -n 1)
+        echo "ROM_ZIP_PATH=$ROM_ZIP" >> $GITHUB_ENV
+        echo "MD5_ZIP=$(md5sum $ROM_ZIP | cut -d ' ' -f 1)" >> $GITHUB_ENV
+
+    - name: Upload ROM to GitHub Releases
+      uses: softprops/action-gh-release@v1
+      if: env.ROM_ZIP_PATH != ''
+      with:
+        files: |
+          rom/${{ env.ROM_ZIP_PATH }}
+        name: Infinity X 3.10 for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
+        tag_name: ${{ github.run_id }}
+        body: |
+          ## Infinity X 3.10 Build - Unofficial
+          * **Source Branch:** ${{ github.event.inputs.ROM_BRANCH }}
+          * **Device Tree:** [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
+          * **Device Tree Commit:** [${{ env.COMMIT_ID }}](${{ github.event.inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }})
+          
+          ### MD5 Verification
+          * `${{ env.MD5_ZIP }}`
