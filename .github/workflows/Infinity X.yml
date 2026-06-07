@@ -10,47 +10,47 @@ on:
       ROM_BRANCH:
         description: 'ROM Manifest Branch (Infinity X 3.10)'
         required: true
-        default: '16' # Updated to numeric identifier based on Project Infinity X tracking
+        default: '13'
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
-        default: 'https://github.com/Paul2202H/Device-Tree.git'
+        default: 'https://github.com/XTENSEI/android_device_tecno_KJ5.git'
       DEVICE_TREE_BRANCH:
         description: 'Device Tree Branch'
         required: true
-        default: 'main'
+        default: 'lineage-23.2'
       DEVICE_PATH:
         description: 'Specify your Device Path'
         required: true
-        default: 'device/infinix/X6820'
+        default: 'device/tecno/KJ5'
       KERNEL_TREE:
         description: 'Kernel Tree URL'
         required: true
-        default: '' # Paste your kernel git link here if you have one
+        default: 'https://github.com/XTENSEI/android_device_tecno_KJ5-kernel.git'
       KERNEL_TREE_BRANCH:
         description: 'Kernel Tree Branch'
         required: true
-        default: 'main'
+        default: 'lineage-23.0'
       KERNEL_PATH:
         description: 'Specify your Kernel Path'
         required: true
-        default: 'kernel/infinix/X6820'
+        default: 'kernel/tecno/KJ5' # Fixed: No longer targets the root /kernel directory
       VENDOR_TREE:
         description: 'Vendor Tree URL'
         required: true
-        default: '' # Paste your proprietary vendor git link here
+        default: 'https://github.com/XTENSEI/android_vendor_tecno_KJ5.git'
       VENDOR_TREE_BRANCH:
         description: 'Vendor Tree Branch'
         required: true
-        default: 'main'
+        default: 'lineage-23.2'
       VENDOR_PATH:
         description: 'Specify your Vendor Path'
         required: true
-        default: 'vendor/infinix/X6820'
+        default: 'vendor/tecno/KJ5'
       DEVICE_NAME:
         description: 'Specify your Device Codename'
         required: true
-        default: 'X6820'
+        default: 'KJ5'
       BUILD_TYPE:
         description: 'Build Type'
         required: true
@@ -167,7 +167,7 @@ jobs:
       with:
         files: |
           rom/${{ env.ROM_ZIP_PATH }}
-        name: Infinity X 3.10 for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
+        name: Infinity X 3.10 for tecno ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
           ## Infinity X 3.10 Build - Unofficial
@@ -178,4 +178,3 @@ jobs:
           
           ### MD5 Verification
           * `${{ env.MD5_ZIP }}`
-          
