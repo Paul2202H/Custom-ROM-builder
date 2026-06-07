@@ -10,7 +10,7 @@ on:
       ROM_BRANCH:
         description: 'ROM Manifest Branch (Infinity X 3.10)'
         required: true
-        default: '13' # Updated to numeric identifier based on Project Infinity X tracking
+        default: '16' # Updated to numeric identifier based on Project Infinity X tracking
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
