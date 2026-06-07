@@ -8,9 +8,9 @@ on:
         required: true
         default: 'https://github.com/LineageOS/android.git'
       ROM_BRANCH:
-        description: 'LineageOS Branch (e.g., lineage-20.0, lineage-21.0)'
+        description: 'LineageOS Branch (e.g., lineage-20.0, lineage-23.2)'
         required: true
-        default: 'lineage-20.0' # Adjust this to match your target Android version compatibility
+        default: 'lineage-23.2' # Adjust this to match your target Android version compatibility
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
