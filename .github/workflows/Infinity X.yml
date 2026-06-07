@@ -6,11 +6,11 @@ on:
       ROM_MANIFEST:
         description: 'ROM Manifest URL'
         required: true
-        default: 'https://github.com/InfinityX-Project/manifest.git'
+        default: 'https://github.com/ProjectInfinity-X/manifest.git' # Fixed URL
       ROM_BRANCH:
         description: 'ROM Manifest Branch (Infinity X 3.10)'
         required: true
-        default: 'thirteen'
+        default: 'thirteen' # Infinity X 3.10 maps to Android 13
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -26,7 +26,7 @@ on:
       KERNEL_TREE:
         description: 'Kernel Tree URL'
         required: true
-        default: '' # Add your kernel repository link here
+        default: '' # Paste your kernel git link here if you have one
       KERNEL_TREE_BRANCH:
         description: 'Kernel Tree Branch'
         required: true
@@ -38,7 +38,7 @@ on:
       VENDOR_TREE:
         description: 'Vendor Tree URL'
         required: true
-        default: '' # Add your proprietary vendor repository link here
+        default: '' # Paste your proprietary vendor git link here
       VENDOR_TREE_BRANCH:
         description: 'Vendor Tree Branch'
         required: true
@@ -98,8 +98,13 @@ jobs:
       run: |
         mkdir -p ${GITHUB_WORKSPACE}/rom
         cd ${GITHUB_WORKSPACE}/rom
+        
+        # Identity Configurations
         git config --global user.name "xoo2001"
         git config --global user.email "ekora2001@gmail.com"
+        
+        # Bypasses non-interactive auth prompts by injecting your current token directly into GitHub requests
+        git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         
         repo init --depth=1 -u ${{ github.event.inputs.ROM_MANIFEST }} -b ${{ github.event.inputs.ROM_BRANCH }}
         repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
@@ -112,16 +117,15 @@ jobs:
         git clone ${{ github.event.inputs.DEVICE_TREE }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} ./${{ github.event.inputs.DEVICE_PATH }}
         
         # Clone Kernel Tree (If provided)
-        if [ -not -z "${{ github.event.inputs.KERNEL_TREE }}" ]; then
+        if [ ! -z "${{ github.event.inputs.KERNEL_TREE }}" ]; then
           git clone ${{ github.event.inputs.KERNEL_TREE }} -b ${{ github.event.inputs.KERNEL_TREE_BRANCH }} ./${{ github.event.inputs.KERNEL_PATH }}
         fi
         
         # Clone Vendor Tree (If provided)
-        if [ -not -z "${{ github.event.inputs.VENDOR_TREE }}" ]; then
+        if [ ! -z "${{ github.event.inputs.VENDOR_TREE }}" ]; then
           git clone ${{ github.event.inputs.VENDOR_TREE }} -b ${{ github.event.inputs.VENDOR_TREE_BRANCH }} ./${{ github.event.inputs.VENDOR_PATH }}
         fi
         
-        # Save structural commit reference for the build logs
         cd ./${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
@@ -137,6 +141,7 @@ jobs:
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         
+        # Standard configuration for ProjectInfinity targets
         lunch infinity_${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.BUILD_TYPE }}
         mka bacon -j$(nproc --all)
 
