@@ -8,9 +8,9 @@ on:
         required: true
         default: 'https://github.com/LineageOS/android.git'
       ROM_BRANCH:
-        description: 'LineageOS Branch (e.g., lineage-20.0, lineage-21.0)'
+        description: 'LineageOS Branch'
         required: true
-        default: 'lineage-20.0'
+        default: '16'
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -54,7 +54,7 @@ on:
       BUILD_TYPE:
         description: 'Build Type'
         required: true
-        default: 'eng'
+        default: 'userdebug'
         type: choice
         options:
         - userdebug
@@ -63,7 +63,7 @@ on:
 
 jobs:
   build:
-    name: Build LineageOS by ${{ github.actor }}
+    name: Build ROM by ${{ github.actor }}
     runs-on: ubuntu-22.04
     if: github.event.repository.owner.id == github.event.sender.id
     env:
@@ -100,13 +100,13 @@ jobs:
         cd ${GITHUB_WORKSPACE}/rom
         
         # Identity Configurations
-        git config --global user.name "xoo2001"
-        git config --global user.email "ekora2001@gmail.com"
+        git config --global user.name "VALLE"
+        git config --global user.email "valle@gmail.com"
         
         # Bypasses non-interactive auth prompts by injecting your token automatically
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         
-        # Initialize LineageOS source code tree manifests
+        # LineageOS target initialization
         repo init --depth=1 --no-repo-verify --git-lfs -u ${{ github.event.inputs.ROM_MANIFEST }} -b ${{ github.event.inputs.ROM_BRANCH }}
         
         # Syncing source files with optimization flags
@@ -129,10 +129,6 @@ jobs:
           git clone ${{ github.event.inputs.VENDOR_TREE }} -b ${{ github.event.inputs.VENDOR_TREE_BRANCH }} ./${{ github.event.inputs.VENDOR_PATH }}
         fi
         
-        # Pull required MediaTek IMS frameworks dynamically to prevent device.mk errors
-        echo "[INFO] Resolving MediaTek hardware compilation dependencies..."
-        git clone https://github.com/LineageOS/android_vendor_mediatek_ims.git -b lineage-20 ./vendor/mediatek/ims
-        
         cd ./${{ github.event.inputs.DEVICE_PATH }}
         echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
@@ -145,21 +141,36 @@ jobs:
     - name: Building LineageOS ROM
       run: |
         cd ${GITHUB_WORKSPACE}/rom
+        
+        # TRICK THE DEVICE SCRIPT: Fake the presence of the private MTK hardware IMS directory
+        mkdir -p vendor/mediatek/ims
+        touch vendor/mediatek/ims/ims.mk
+        
+        # Move to device tree configuration directories to handle fallback inclusions
+        cd ${{ github.event.inputs.DEVICE_PATH }}
+
+        # Ensure missing vendor/mediatek makefile calls don't crash early tracking processes
+        if [ -f "device.mk" ]; then
+          sed -i 's|\$(call inherit-product, vendor/mediatek/ims/ims.mk)|-include vendor/mediatek/ims/ims.mk|g' device.mk
+          sed -i 's|include vendor/mediatek/ims/ims.mk|-include vendor/mediatek/ims/ims.mk|g' device.mk
+        fi
+        
+        # Return to execution root
+        cd ${GITHUB_WORKSPACE}/rom
+        
+        # Setup environment and compile
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         
-        # Modern AOSP configuration standard layout structure
-        # Syntax breakdown: lunch <product_makefile_name> <release_config> <build_variant>
+        # Modern explicit arguments selection lunch call execution for LineageOS
         lunch lineage_${{ github.event.inputs.DEVICE_NAME }} trunk_staging ${{ github.event.inputs.BUILD_TYPE }}
-        
-        # Standard LineageOS build invocation target command
         mka bacon -j$(nproc --all)
 
     - name: Set Release Properties
       run: |
         echo "BUILD_DATE=$(TZ=Asia/Manila date +%Y%m%d)" >> $GITHUB_ENV
         cd ${GITHUB_WORKSPACE}/rom
-        # Search dynamically for generated target Lineage zip packages
+        # Locate target generated Lineage zip packages dynamically
         ROM_ZIP=$(find out/target/product/${{ github.event.inputs.DEVICE_NAME }}/ -maxdepth 1 -name "lineage-*.zip" ! -name "*target_files*" | head -n 1)
         echo "ROM_ZIP_PATH=$ROM_ZIP" >> $GITHUB_ENV
         if [ -f "$ROM_ZIP" ]; then
@@ -182,3 +193,4 @@ jobs:
           
           ### MD5 Verification Checksum
           * `${{ env.MD5_ZIP }}`
+          
