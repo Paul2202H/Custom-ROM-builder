@@ -10,7 +10,7 @@ on:
       ROM_BRANCH:
         description: 'ROM Manifest Branch'
         required: true
-        default: '16' # Updated default to 16
+        default: '16'
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -160,6 +160,12 @@ jobs:
         # Re-register build product definitions inside configuration indexes
         if [ -f "AndroidProducts.mk" ]; then
           sed -i 's/lineage_${{ github.event.inputs.DEVICE_NAME }}/infinity_${{ github.event.inputs.DEVICE_NAME }}/g' AndroidProducts.mk
+        fi
+
+        # Make missing vendor/mediatek elements optional instead of breaking dependencies
+        if [ -f "device.mk" ]; then
+          sed -i 's|\$(call inherit-product, vendor/mediatek/ims/ims.mk)|-include vendor/mediatek/ims/ims.mk|g' device.mk
+          sed -i 's|include vendor/mediatek/ims/ims.mk|-include vendor/mediatek/ims/ims.mk|g' device.mk
         fi
         
         # Return to execution root
