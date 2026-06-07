@@ -10,7 +10,7 @@ on:
       ROM_BRANCH:
         description: 'ROM Manifest Branch (Infinity X 3.10)'
         required: true
-        default: 'thirteen' # Infinity X 3.10 maps to Android 13
+        default: '16' # Infinity X 3.10 maps to Android 13
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
