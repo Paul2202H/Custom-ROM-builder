@@ -6,11 +6,11 @@ on:
       ROM_MANIFEST:
         description: 'ROM Manifest URL'
         required: true
-        default: 'https://github.com/ProjectInfinity-X/manifest.git' # Fixed URL
+        default: 'https://github.com/ProjectInfinity-X/manifest.git'
       ROM_BRANCH:
         description: 'ROM Manifest Branch (Infinity X 3.10)'
         required: true
-        default: '16' # Infinity X 3.10 maps to Android 13
+        default: '13' # Updated to numeric identifier based on Project Infinity X tracking
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -103,11 +103,14 @@ jobs:
         git config --global user.name "xoo2001"
         git config --global user.email "ekora2001@gmail.com"
         
-        # Bypasses non-interactive auth prompts by injecting your current token directly into GitHub requests
+        # Bypasses non-interactive auth prompts by injecting your token automatically
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
         
-        repo init --depth=1 -u ${{ github.event.inputs.ROM_MANIFEST }} -b ${{ github.event.inputs.ROM_BRANCH }}
-        repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+        # Updated Repo Init using flags from the official documentation
+        repo init --depth=1 --no-repo-verify --git-lfs -u ${{ github.event.inputs.ROM_MANIFEST }} -b ${{ github.event.inputs.ROM_BRANCH }}
+        
+        # Updated Repo Sync adding optimization flags to conserve environment resources
+        repo sync -c --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune -j$(nproc --all)
 
     - name: Clone Device, Kernel, and Vendor Trees
       run: |
@@ -141,7 +144,10 @@ jobs:
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
         
-        # Standard configuration for ProjectInfinity targets
+        # Project Infinity X Official Build Flags
+        export WITH_GAPPS=true
+        export INFINITY_MAINTAINER="xoo2001"
+        
         lunch infinity_${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.BUILD_TYPE }}
         mka bacon -j$(nproc --all)
 
@@ -172,3 +178,4 @@ jobs:
           
           ### MD5 Verification
           * `${{ env.MD5_ZIP }}`
+          
