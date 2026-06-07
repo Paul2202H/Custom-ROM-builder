@@ -8,9 +8,9 @@ on:
         required: true
         default: 'https://github.com/ProjectInfinity-X/manifest.git'
       ROM_BRANCH:
-        description: 'ROM Manifest Branch (Infinity X 3.10)'
+        description: 'ROM Manifest Branch'
         required: true
-        default: '13'
+        default: '16' # Updated default to 16
       DEVICE_TREE:
         description: 'Device Tree URL'
         required: true
@@ -34,7 +34,7 @@ on:
       KERNEL_PATH:
         description: 'Specify your Kernel Path'
         required: true
-        default: 'kernel/tecno/KJ5' # Fixed: No longer targets the root /kernel directory
+        default: 'kernel/tecno/KJ5'
       VENDOR_TREE:
         description: 'Vendor Tree URL'
         required: true
@@ -100,8 +100,8 @@ jobs:
         cd ${GITHUB_WORKSPACE}/rom
         
         # Identity Configurations
-        git config --global user.name "xoo2001"
-        git config --global user.email "ekora2001@gmail.com"
+        git config --global user.name "VALLE"
+        git config --global user.email "valle@gmail.com"
         
         # Bypasses non-interactive auth prompts by injecting your token automatically
         git config --global url."https://${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
@@ -141,14 +141,38 @@ jobs:
     - name: Building Custom ROM
       run: |
         cd ${GITHUB_WORKSPACE}/rom
+        
+        # Move to device tree configuration directories to fix paths
+        cd ${{ github.event.inputs.DEVICE_PATH }}
+        
+        # Refactor makefile target signatures
+        if [ -f "lineage_${{ github.event.inputs.DEVICE_NAME }}.mk" ]; then
+          cp lineage_${{ github.event.inputs.DEVICE_NAME }}.mk infinity_${{ github.event.inputs.DEVICE_NAME }}.mk
+          sed -i 's/lineage_/infinity_/g' infinity_${{ github.event.inputs.DEVICE_NAME }}.mk
+        fi
+        
+        # Patch vendor compilation heritage inclusions
+        if [ -f "infinity_${{ github.event.inputs.DEVICE_NAME }}.mk" ]; then
+          sed -i 's|vendor/lineage/config/common_full_phone.mk|vendor/infinity/config/common_full_phone.mk|g' infinity_${{ github.event.inputs.DEVICE_NAME }}.mk
+          sed -i 's|vendor/lineage/config/common.mk|vendor/infinity/config/common.mk|g' infinity_${{ github.event.inputs.DEVICE_NAME }}.mk
+        fi
+        
+        # Re-register build product definitions inside configuration indexes
+        if [ -f "AndroidProducts.mk" ]; then
+          sed -i 's/lineage_${{ github.event.inputs.DEVICE_NAME }}/infinity_${{ github.event.inputs.DEVICE_NAME }}/g' AndroidProducts.mk
+        fi
+        
+        # Return to execution root
+        cd ${GITHUB_WORKSPACE}/rom
+        
+        # Setup environment and compile
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        
-        # Project Infinity X Official Build Flags
         export WITH_GAPPS=true
-        export INFINITY_MAINTAINER="xoo2001"
+        export INFINITY_MAINTAINER="VALLE"
         
-        lunch infinity_${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.BUILD_TYPE }}
+        # Modern explicit arguments selection lunch call execution
+        lunch infinity_${{ github.event.inputs.DEVICE_NAME }} trunk_staging ${{ github.event.inputs.BUILD_TYPE }}
         mka bacon -j$(nproc --all)
 
     - name: Set Release Properties
@@ -167,14 +191,15 @@ jobs:
       with:
         files: |
           rom/${{ env.ROM_ZIP_PATH }}
-        name: Infinity X 3.10 for tecno ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
+        name: Infinity X for tecno ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
-          ## Infinity X 3.10 Build - Unofficial
+          ## Infinity X Build - Unofficial
           * **Source Branch:** ${{ github.event.inputs.ROM_BRANCH }}
           * **Device Path:** `${{ github.event.inputs.DEVICE_PATH }}`
           * **Kernel Path:** `${{ github.event.inputs.KERNEL_PATH }}`
           * **Vendor Path:** `${{ github.event.inputs.VENDOR_PATH }}`
+          * **ROM Maintainer:** VALLE
           
           ### MD5 Verification
           * `${{ env.MD5_ZIP }}`
